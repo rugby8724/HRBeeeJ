@@ -1,4 +1,14 @@
 from flask import Flask, request, jsonify
+import slack
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+env_path = Path('.') / '.env' # Path to .env file
+load_dotenv(dotenv_path=env_path)
+
+client = slack.WebClient(token=os.environ['SLACK_TOKEN'])
+client.chat_postMessage(channel='#test-hack', text='Happy Hacking!')
 
 app = Flask(__name__)
 
