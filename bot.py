@@ -1,33 +1,61 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 import slack
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from slackeventsapi import SlackEventAdapter
 
 env_path = Path('.') / '.env' # Path to .env file
 load_dotenv(dotenv_path=env_path)
 
-client = slack.WebClient(token=os.environ['SLACK_TOKEN'])
-client.chat_postMessage(channel='#test-hack', text='Happy Hacking!')
-
 app = Flask(__name__)
 
-@app.route('/slack/events', methods=['POST'])
-def slack_events():
-    data = request.json
-    if data.get('type') == 'url_verification':
-        return jsonify({'challenge': data.get('challenge')})
+slack_event_adapter = SlackEventAdapter(os.environ['SLACK_SIGNING_SECRET'], '/slack/events', app)
+
+client = slack.WebClient(token=os.environ['SLACK_TOKEN'])
+# client.chat_postMessage(channel='#test-hack', text='Happy Hacking!')
+
+BOT_ID = client.api_call("auth.test")['user_id']
+
+
+@slack_event_adapter.on('message')
+def message(payload):
+    print('Message:', payload)
+    event = payload.get('event', {})
+    channel_id = event.get('channel')
+    user_id = event.get('user')
+    text = event.get('text')
     
-    if data.get('type') == 'event_callback':
-        event = data.get('event')
-        if event.get('type') == 'message':
-            text = event.get('text')
-            if text == 'hello':
-                return jsonify({'text': 'world'})
-            else:
-                print('Message:', text)
+    if BOT_ID != user_id:
+        client.chat_postMessage(channel=channel_id, text=text)
         
-    return '', 200
+@app.route('/message-count', methods=['POST'])
+def message_count():
+    data = request.form
+    user_id = data.get('user_id')
+    channel_id = data.get('channel_id')
+    text = data.get('text')
+    
+    client.chat_postMessage(channel=channel_id, text=f'User: {user_id} said: {text}')
+    
+    return Response('Message count endponit', status=200)
+
+# @app.route('/slack/events', methods=['POST'])
+# def slack_events():
+#     data = request.json
+#     if data.get('type') == 'url_verification':
+#         return jsonify({'challenge': data.get('challenge')})
+    
+#     if data.get('type') == 'event_callback':
+#         event = data.get('event')
+#         if event.get('type') == 'message':
+#             text = event.get('text')
+#             if text == 'hello':
+#                 return jsonify({'text': 'world'})
+#             else:
+#                 print('Message:', text)
+        
+#     return '', 200
   
 if __name__ == '__main__':
-    app.run(port=3000)
+    app.run(debug=True, port=3000)
