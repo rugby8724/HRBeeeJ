@@ -20,42 +20,31 @@ BOT_ID = client.api_call("auth.test")['user_id']
 
 @slack_event_adapter.on('message')
 def message(payload):
-    print('Message:', payload)
+    # print('Message:', payload)
     event = payload.get('event', {})
     channel_id = event.get('channel')
     user_id = event.get('user')
     text = event.get('text')
+    ts = event.get('ts')
     
     if BOT_ID != user_id:
-        client.chat_postMessage(channel=channel_id, text=text)
+        client.chat_postMessage(channel=channel_id, thread_ts=ts, text=f'Hello {user_id}! you said: {text}')
         
-@app.route('/message-count', methods=['POST'])
+@app.route('/hr-buzz', methods=['POST'])
 def message_count():
+    # event = payload.get('event', {})
+    # print('Event:', event)
     data = request.form
+    print('Data:', data)
     user_id = data.get('user_id')
     channel_id = data.get('channel_id')
     text = data.get('text')
-    
+
     client.chat_postMessage(channel=channel_id, text=f'User: {user_id} said: {text}')
     
-    return Response('Message count endponit', status=200)
+    return Response('', status=200)
 
-# @app.route('/slack/events', methods=['POST'])
-# def slack_events():
-#     data = request.json
-#     if data.get('type') == 'url_verification':
-#         return jsonify({'challenge': data.get('challenge')})
-    
-#     if data.get('type') == 'event_callback':
-#         event = data.get('event')
-#         if event.get('type') == 'message':
-#             text = event.get('text')
-#             if text == 'hello':
-#                 return jsonify({'text': 'world'})
-#             else:
-#                 print('Message:', text)
-        
-#     return '', 200
+
   
 if __name__ == '__main__':
     app.run(debug=True, port=3000)
